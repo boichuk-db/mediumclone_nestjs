@@ -1,13 +1,13 @@
-import { CreateUserDto } from '@app/dto/createUser.dto';
+import { CreateUserDto } from '@app/user/dto/createUser.dto';
 import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
 import { UserEntity } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import { JwtService } from '@nestjs/jwt';
 import { UserResponseInterface } from './types/userResponse.interface';
-import { LoginUserDto } from '@app/dto/loginUser.dto';
+import { LoginUserDto } from '@app/user/dto/loginUser.dto';
 import { compare, hash } from 'bcrypt';
-import { UpdateUserDto } from '@app/dto/updateUser.dto';
+import { UpdateUserDto } from '@app/user/dto/updateUser.dto';
 
 @Injectable()
 export class UserService {

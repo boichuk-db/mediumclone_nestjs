@@ -11,14 +11,14 @@ import {
 } from '@nestjs/common';
 
 import { UserService } from './user.service';
-import { CreateUserDto } from '@app/dto/createUser.dto';
+import { CreateUserDto } from '@app/user/dto/createUser.dto';
 import { UserResponseInterface } from './types/userResponse.interface';
-import { LoginUserDto } from '@app/dto/loginUser.dto';
+import { LoginUserDto } from '@app/user/dto/loginUser.dto';
 import type { ExpressRequestInterface } from '@app/types/expressRequest.interface';
 import { UserEntity } from './user.entity';
 import { User } from './decorators/user.decorator';
 import { AuthGuard } from './guards/auth.guard';
-import { UpdateUserDto } from '@app/dto/updateUser.dto';
+import { UpdateUserDto } from '@app/user/dto/updateUser.dto';
 
 @Controller()
 export class UserController {
