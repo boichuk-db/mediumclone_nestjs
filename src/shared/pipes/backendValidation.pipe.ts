@@ -10,12 +10,12 @@ import { BackendException } from '@app/shared/exceptions/backend.exception';
 
 export class BackendValidationPipe implements PipeTransform {
   async transform(value: any, metadata: ArgumentMetadata) {
-    if (!metadata.metatype) {
+    if (!metadata.metatype || !this.toValidate(metadata.metatype)) {
       return value;
     }
 
-    const object = plainToInstance(metadata.metatype, value);
-    const errors = await validate(object);
+    const object = plainToInstance(metadata.metatype, value ?? {});
+    const errors = await validate(object, { forbidUnknownValues: false });
 
     if (errors.length === 0) {
       return value;
@@ -33,10 +33,16 @@ export class BackendValidationPipe implements PipeTransform {
       );
 
       if (constraints.length > 0) {
-        acc[error.property] = constraints;
+        const key = error.property || 'body';
+        acc[key] = constraints;
       }
 
       return acc;
     }, {});
+  }
+
+  private toValidate(metatype: ArgumentMetadata['metatype']): boolean {
+    const types: Array<Function> = [String, Boolean, Number, Array, Object];
+    return metatype ? !types.includes(metatype) : false;
   }
 }

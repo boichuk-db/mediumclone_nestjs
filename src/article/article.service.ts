@@ -1,4 +1,5 @@
 import { ArticleEntity } from './article.entity';
+import { CommentEntity } from './comment.entity';
 import { CreateArticleDto } from './dto/createArticle.dto';
 import {
   Injectable,
@@ -14,12 +15,18 @@ import type { ArticlesQueryInterface } from './types/articlesQuery.interface';
 import type { ArticleType } from './types/article.type';
 import { FollowEntity } from '@app/profile/follow.entity';
 import { BackendException } from '@app/shared/exceptions/backend.exception';
+import { CreateCommentDto } from './dto/createComment.dto';
+import type { CommentType } from './types/comment.type';
+import type { CommentResponseInterface } from './types/comment.response';
+import type { CommentsResponseInterface } from './types/comments.response';
 
 @Injectable()
 export class ArticleService {
   constructor(
     @InjectRepository(ArticleEntity)
     private readonly articleRepository: Repository<ArticleEntity>,
+    @InjectRepository(CommentEntity)
+    private readonly commentRepository: Repository<CommentEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
     @InjectRepository(FollowEntity)
@@ -162,6 +169,68 @@ export class ArticleService {
     return await this.articleRepository.save(article);
   }
 
+  async getCommentsByArticleSlug(
+    slug: string,
+    currentUserId?: number,
+  ): Promise<CommentsResponseInterface> {
+    const article = await this.findBySlug(slug);
+    const comments = await this.commentRepository.find({
+      where: { articleId: article.id },
+      order: { createdAt: 'DESC' },
+      relations: ['author'],
+    });
+    const commentsWithAuthor = await this.mapCommentsWithAuthorFollowing(
+      comments,
+      currentUserId,
+    );
+    return { comments: commentsWithAuthor };
+  }
+
+  async addCommentToArticle(
+    slug: string,
+    createCommentDto: CreateCommentDto,
+    currentUser: UserEntity,
+  ): Promise<CommentResponseInterface> {
+    const article = await this.findBySlug(slug);
+    const comment = new CommentEntity();
+    comment.body = createCommentDto.body;
+    comment.articleId = article.id;
+    comment.authorId = currentUser.id;
+
+    const savedComment = await this.commentRepository.save(comment);
+    const commentWithAuthor = await this.commentRepository.findOne({
+      where: { id: savedComment.id },
+      relations: ['author'],
+    });
+    if (!commentWithAuthor) {
+      throw BackendException.notFound('Comment not found');
+    }
+
+    const [mappedComment] = await this.mapCommentsWithAuthorFollowing(
+      [commentWithAuthor],
+      currentUser.id,
+    );
+    return { comment: mappedComment };
+  }
+
+  async deleteCommentFromArticle(
+    slug: string,
+    commentId: number,
+    currentUserId: number,
+  ): Promise<void> {
+    const article = await this.findBySlug(slug);
+    const comment = await this.commentRepository.findOne({
+      where: { id: commentId, articleId: article.id },
+    });
+    if (!comment) {
+      throw BackendException.notFound('Comment not found');
+    }
+    if (comment.authorId !== currentUserId) {
+      throw BackendException.forbidden('You are not the author of this comment');
+    }
+    await this.commentRepository.delete({ id: commentId });
+  }
+
   buildArticleResponse(
     article: ArticleEntity,
     favorited = false,
@@ -205,6 +274,37 @@ export class ArticleService {
     });
 
     return user?.favorites?.map((favorite) => favorite.id) ?? [];
+  }
+
+  private async mapCommentsWithAuthorFollowing(
+    comments: CommentEntity[],
+    currentUserId?: number,
+  ): Promise<CommentType[]> {
+    const authorIds = [...new Set(comments.map((comment) => comment.authorId))];
+    const followSet = new Set<number>();
+
+    if (currentUserId && authorIds.length > 0) {
+      const follows = await this.followRepository.find({
+        where: {
+          followerId: currentUserId,
+          followingId: In(authorIds),
+        },
+      });
+      follows.forEach((follow) => followSet.add(follow.followingId));
+    }
+
+    return comments.map((comment) => ({
+      id: comment.id,
+      body: comment.body,
+      createdAt: comment.createdAt,
+      updatedAt: comment.updatedAt,
+      author: {
+        username: comment.author.username,
+        bio: comment.author.bio,
+        image: comment.author.image,
+        following: followSet.has(comment.authorId),
+      },
+    }));
   }
 
   async deleteArticle(

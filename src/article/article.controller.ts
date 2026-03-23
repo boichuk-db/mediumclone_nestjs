@@ -18,10 +18,13 @@ import { AuthGuard } from '@app/user/guards/auth.guard';
 import { UserEntity } from '@app/user/user.entity';
 import { User } from '@app/user/decorators/user.decorator';
 import { CreateArticleDto } from './dto/createArticle.dto';
+import { CreateCommentDto } from './dto/createComment.dto';
 import { ArticleResponseInterface } from './types/article.response';
 import { DeleteResult } from 'typeorm';
 import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { ArticlesResponseInterface } from './types/articles.response';
+import { CommentsResponseInterface } from './types/comments.response';
+import { CommentResponseInterface } from './types/comment.response';
 import type { ArticlesQueryInterface } from './types/articlesQuery.interface';
 import type { ExpressRequestInterface } from '@app/types/expressRequest.interface';
 import { BackendValidationPipe } from '@app/shared/pipes/backendValidation.pipe';
@@ -61,12 +64,52 @@ export class ArticleController {
     return this.articleService.buildArticleResponse(article, false);
   }
 
+  @Get(':slug/comments')
+  async getCommentsByArticleSlug(
+    @Param('slug') slug: string,
+    @Req() request: ExpressRequestInterface,
+  ): Promise<CommentsResponseInterface> {
+    return await this.articleService.getCommentsByArticleSlug(
+      slug,
+      request.user?.id,
+    );
+  }
+
+  @Post(':slug/comments')
+  @UseGuards(AuthGuard)
+  @UsePipes(new BackendValidationPipe())
+  async addCommentToArticle(
+    @Param('slug') slug: string,
+    @Body('comment') createCommentDto: CreateCommentDto,
+    @User() currentUser: UserEntity,
+  ): Promise<CommentResponseInterface> {
+    return await this.articleService.addCommentToArticle(
+      slug,
+      createCommentDto,
+      currentUser,
+    );
+  }
+
+  @Delete(':slug/comments/:id')
+  @UseGuards(AuthGuard)
+  async deleteCommentFromArticle(
+    @Param('slug') slug: string,
+    @Param('id') id: string,
+    @User('id') currentUserId: number,
+  ): Promise<void> {
+    return await this.articleService.deleteCommentFromArticle(
+      slug,
+      Number(id),
+      currentUserId,
+    );
+  }
+
   @Get(':slug')
   async getSingleArticle(
     @Param('slug') slug: string,
-    @Req() request: ExpressRequestInterface,
   ): Promise<ArticleResponseInterface> {
-    return await this.articleService.getArticleBySlug(slug, request.user?.id);
+    const article = await this.articleService.findBySlug(slug);
+    return this.articleService.buildArticleResponse(article);
   }
 
   @Delete(':slug')
