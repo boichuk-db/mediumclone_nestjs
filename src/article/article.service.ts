@@ -7,13 +7,14 @@ import {
 } from '@nestjs/common';
 import { UserEntity } from '@app/user/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
-import { DeleteResult, Repository } from 'typeorm';
+import { DeleteResult, In, Repository } from 'typeorm';
 import { ArticleResponseInterface } from './types/article.response';
 import slugify from 'slugify';
 import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { ArticlesResponseInterface } from './types/articles.response';
 import type { ArticlesQueryInterface } from './types/articlesQuery.interface';
 import type { ArticleType } from './types/article.type';
+import { FollowEntity } from '@app/profile/follow.entity';
 
 @Injectable()
 export class ArticleService {
@@ -22,6 +23,8 @@ export class ArticleService {
     private readonly articleRepository: Repository<ArticleEntity>,
     @InjectRepository(UserEntity)
     private readonly userRepository: Repository<UserEntity>,
+    @InjectRepository(FollowEntity)
+    private readonly followRepository: Repository<FollowEntity>,
   ) {}
 
   async getArticles(
@@ -91,6 +94,48 @@ export class ArticleService {
     return { articles: articlesWithFavorited, articlesCount };
   }
 
+  async getFeed(
+    query: ArticlesQueryInterface,
+    currentUserId: number,
+  ): Promise<ArticlesResponseInterface> {
+    const followings = await this.followRepository.find({
+      where: { followerId: currentUserId },
+    });
+    if (followings.length === 0) {
+      return { articles: [], articlesCount: 0 };
+    }
+    const followingIds = followings.map((following) => following.followingId);
+    const queryBuilder = await this.articleRepository
+      .createQueryBuilder('articles')
+      .leftJoinAndSelect('articles.author', 'author')
+      .where('articles.authorId IN (:...followingIds)', { followingIds });
+
+    queryBuilder.orderBy('articles.createdAt', 'DESC');
+    const articlesCount = await queryBuilder.getCount();
+
+    if (query.limit !== undefined) {
+      const limit = Number(query.limit);
+      if (Number.isFinite(limit)) {
+        queryBuilder.limit(limit);
+      }
+    }
+    if (query.offset !== undefined) {
+      const offset = Number(query.offset);
+      if (Number.isFinite(offset)) {
+        queryBuilder.offset(offset);
+      }
+    }
+    const articles = await queryBuilder.getMany();
+    const favoriteIds = await this.getFavoriteArticleIdsForUser(currentUserId);
+    const articlesWithFavorited: ArticleType[] = articles.map((article) => {
+      const favorited = favoriteIds.includes(article.id);
+      return {
+        ...article,
+        favorited,
+      };
+    });
+    return { articles: articlesWithFavorited, articlesCount };
+  }
   async getArticleBySlug(
     slug: string,
     currentUserId?: number,
