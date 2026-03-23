@@ -11,7 +11,18 @@ config({ path: `.env.${nodeEnv}` });
 config({ path: '.env' });
 
 async function bootstrap() {
-  const app = await NestFactory.create(AppModule, { cors: true });
+  const corsOrigins = process.env.CORS_ORIGIN?.split(',')
+    .map((origin) => origin.trim())
+    .filter(Boolean);
+  const cors =
+    corsOrigins && corsOrigins.length > 0
+      ? {
+          origin: corsOrigins,
+          credentials: true,
+        }
+      : true;
+
+  const app = await NestFactory.create(AppModule, { cors });
   await app.listen(process.env.PORT ?? 3000);
 }
 bootstrap();

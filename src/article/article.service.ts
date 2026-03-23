@@ -12,7 +12,7 @@ import slugify from 'slugify';
 import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { ArticlesResponseInterface } from './types/articles.response';
 import type { ArticlesQueryInterface } from './types/articlesQuery.interface';
-import type { ArticleType } from './types/article.type';
+import type { ArticleAuthorType, ArticleType } from './types/article.type';
 import { FollowEntity } from '@app/profile/follow.entity';
 import { BackendException } from '@app/shared/exceptions/backend.exception';
 import { CreateCommentDto } from './dto/createComment.dto';
@@ -89,10 +89,16 @@ export class ArticleService {
     const articles = await queryBuilder.getMany();
     const favoriteIds = await this.getFavoriteArticleIdsForUser(currentUserId);
 
+    const authorIds = [...new Set(articles.map((article) => article.author.id))];
+    const followingSet = await this.getFollowingSetForAuthors(
+      currentUserId,
+      authorIds,
+    );
     const articlesWithFavorited: ArticleType[] = articles.map((article) => {
       const favorited = favoriteIds.includes(article.id);
       return {
         ...article,
+        author: this.mapArticleAuthor(article.author, followingSet),
         favorited,
       };
     });
@@ -133,10 +139,16 @@ export class ArticleService {
     }
     const articles = await queryBuilder.getMany();
     const favoriteIds = await this.getFavoriteArticleIdsForUser(currentUserId);
+    const authorIds = [...new Set(articles.map((article) => article.author.id))];
+    const followingSet = await this.getFollowingSetForAuthors(
+      currentUserId,
+      authorIds,
+    );
     const articlesWithFavorited: ArticleType[] = articles.map((article) => {
       const favorited = favoriteIds.includes(article.id);
       return {
         ...article,
+        author: this.mapArticleAuthor(article.author, followingSet),
         favorited,
       };
     });
@@ -149,7 +161,7 @@ export class ArticleService {
     const article = await this.findBySlug(slug);
     const favoriteIds = await this.getFavoriteArticleIdsForUser(currentUserId);
     const favorited = favoriteIds.includes(article.id);
-    return this.buildArticleResponse(article, favorited);
+    return await this.buildArticleResponse(article, favorited, currentUserId);
   }
 
   async createArticle(
@@ -231,13 +243,18 @@ export class ArticleService {
     await this.commentRepository.delete({ id: commentId });
   }
 
-  buildArticleResponse(
+  async buildArticleResponse(
     article: ArticleEntity,
     favorited = false,
-  ): ArticleResponseInterface {
+    currentUserId?: number,
+  ): Promise<ArticleResponseInterface> {
+    const followingSet = await this.getFollowingSetForAuthors(currentUserId, [
+      article.author.id,
+    ]);
     return {
       article: {
         ...article,
+        author: this.mapArticleAuthor(article.author, followingSet),
         favorited,
       },
     };
@@ -305,6 +322,37 @@ export class ArticleService {
         following: followSet.has(comment.authorId),
       },
     }));
+  }
+
+  private mapArticleAuthor(
+    author: UserEntity,
+    followingSet: Set<number>,
+  ): ArticleAuthorType {
+    return {
+      username: author.username,
+      bio: author.bio,
+      image: author.image,
+      following: followingSet.has(author.id),
+    };
+  }
+
+  private async getFollowingSetForAuthors(
+    currentUserId: number | undefined,
+    authorIds: number[],
+  ): Promise<Set<number>> {
+    const followingSet = new Set<number>();
+    if (!currentUserId || authorIds.length === 0) {
+      return followingSet;
+    }
+
+    const follows = await this.followRepository.find({
+      where: {
+        followerId: currentUserId,
+        followingId: In(authorIds),
+      },
+    });
+    follows.forEach((follow) => followingSet.add(follow.followingId));
+    return followingSet;
   }
 
   async deleteArticle(

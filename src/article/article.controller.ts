@@ -10,7 +10,6 @@ import {
   Req,
   UseGuards,
   UsePipes,
-  ValidationPipe,
 } from '@nestjs/common';
 
 import { ArticleService } from './article.service';
@@ -61,7 +60,11 @@ export class ArticleController {
       currentUser,
       createArticleDto,
     );
-    return this.articleService.buildArticleResponse(article, false);
+    return await this.articleService.buildArticleResponse(
+      article,
+      false,
+      currentUser.id,
+    );
   }
 
   @Get(':slug/comments')
@@ -107,9 +110,9 @@ export class ArticleController {
   @Get(':slug')
   async getSingleArticle(
     @Param('slug') slug: string,
+    @Req() request: ExpressRequestInterface,
   ): Promise<ArticleResponseInterface> {
-    const article = await this.articleService.findBySlug(slug);
-    return this.articleService.buildArticleResponse(article);
+    return await this.articleService.getArticleBySlug(slug, request.user?.id);
   }
 
   @Delete(':slug')
@@ -134,7 +137,11 @@ export class ArticleController {
       updateArticleDto,
       currentUserId,
     );
-    return this.articleService.buildArticleResponse(article, false);
+    return await this.articleService.buildArticleResponse(
+      article,
+      false,
+      currentUserId,
+    );
   }
 
   @Post(':slug/favorite')
@@ -147,7 +154,11 @@ export class ArticleController {
       slug,
       currentUserId,
     );
-    return this.articleService.buildArticleResponse(article, true);
+    return await this.articleService.buildArticleResponse(
+      article,
+      true,
+      currentUserId,
+    );
   }
 
   @Delete(':slug/favorite')
@@ -160,6 +171,10 @@ export class ArticleController {
       slug,
       currentUserId,
     );
-    return this.articleService.buildArticleResponse(article, false);
+    return await this.articleService.buildArticleResponse(
+      article,
+      false,
+      currentUserId,
+    );
   }
 }

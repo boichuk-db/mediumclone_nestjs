@@ -1,5 +1,5 @@
-import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions.js';
 import { config as loadEnv } from 'dotenv';
+import { PostgresConnectionOptions } from 'typeorm/driver/postgres/PostgresConnectionOptions.js';
 
 const nodeEnv = process.env.NODE_ENV ?? 'development';
 loadEnv({ path: `.env.${nodeEnv}` });
@@ -12,9 +12,9 @@ const config: PostgresConnectionOptions = {
   username: process.env.DB_USERNAME ?? 'mediumclone',
   password: process.env.DB_PASSWORD ?? '123',
   database: process.env.DB_DATABASE ?? 'mediumclone',
-  entities: [__dirname + '/**/*.entity{.ts,.js}'],
+  entities: [__dirname + '/../**/*.entity{.ts,.js}'],
   synchronize: false,
-  migrations: [__dirname + '/migrations/**/*{.ts,.js}'],
+  migrations: [__dirname + '/../migrations/**/*{.ts,.js}'],
 };
 
 export default config;

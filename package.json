@@ -16,11 +16,11 @@
     "test:cov": "jest --coverage",
     "test:debug": "node --inspect-brk -r tsconfig-paths/register -r ts-node/register node_modules/.bin/jest --runInBand",
     "test:e2e": "jest --config ./test/jest-e2e.json",
-    "typeorm": "NODE_ENV=development ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/ormdatasource.ts",
+    "typeorm": "NODE_ENV=development ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/ormdatasource.ts",
     "db:drop": "yarn typeorm schema:drop",
     "db:generate": "yarn typeorm migration:generate",
     "db:migrate": "yarn typeorm migration:run",
-    "db:seed": "NODE_ENV=development ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/ormseeddatasource.ts migration:run"
+    "db:seed": "NODE_ENV=development ts-node -r tsconfig-paths/register ./node_modules/typeorm/cli.js -d src/database/ormseeddatasource.ts migration:run"
   },
   "dependencies": {
     "@nestjs/common": "^11.0.1",

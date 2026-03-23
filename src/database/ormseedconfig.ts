@@ -3,7 +3,7 @@ import ormconfig from './ormconfig';
 
 const ormseedconfig: PostgresConnectionOptions = {
   ...ormconfig,
-  migrations: ['src/seeds/*.ts'],
+  migrations: [__dirname + '/../seeds/*{.ts,.js}'],
 };
 
 export default ormseedconfig;
