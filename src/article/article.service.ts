@@ -1,9 +1,7 @@
 import { ArticleEntity } from './article.entity';
 import { CreateArticleDto } from './dto/createArticle.dto';
 import {
-  ForbiddenException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { UserEntity } from '@app/user/user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
@@ -15,6 +13,7 @@ import { ArticlesResponseInterface } from './types/articles.response';
 import type { ArticlesQueryInterface } from './types/articlesQuery.interface';
 import type { ArticleType } from './types/article.type';
 import { FollowEntity } from '@app/profile/follow.entity';
+import { BackendException } from '@app/shared/exceptions/backend.exception';
 
 @Injectable()
 export class ArticleService {
@@ -188,7 +187,7 @@ export class ArticleService {
       where: { slug },
     });
     if (!article) {
-      throw new NotFoundException('Article not found');
+      throw BackendException.notFound('Article not found');
     }
     return article;
   }
@@ -214,10 +213,10 @@ export class ArticleService {
   ): Promise<DeleteResult> {
     const article = await this.findBySlug(slug);
     if (!article) {
-      throw new NotFoundException('Article not found');
+      throw BackendException.notFound('Article not found');
     }
     if (article.author.id !== currentUserId) {
-      throw new ForbiddenException('You are not the author of this article');
+      throw BackendException.forbidden('You are not the author of this article');
     }
     return await this.articleRepository.delete({ slug });
   }
@@ -229,10 +228,10 @@ export class ArticleService {
   ): Promise<ArticleEntity> {
     const article = await this.findBySlug(slug);
     if (!article) {
-      throw new NotFoundException('Article not found');
+      throw BackendException.notFound('Article not found');
     }
     if (article.author.id !== currentUserId) {
-      throw new ForbiddenException('You are not the author of this article');
+      throw BackendException.forbidden('You are not the author of this article');
     }
     Object.assign(article, updateArticleDto);
     return await this.articleRepository.save(article);
@@ -249,7 +248,7 @@ export class ArticleService {
       relations: ['favorites'],
     });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw BackendException.notFound('User not found');
     }
 
     if (!user.favorites) {
@@ -282,7 +281,7 @@ export class ArticleService {
       relations: ['favorites'],
     });
     if (!user) {
-      throw new NotFoundException('User not found');
+      throw BackendException.notFound('User not found');
     }
     if (!user.favorites) {
       user.favorites = [];

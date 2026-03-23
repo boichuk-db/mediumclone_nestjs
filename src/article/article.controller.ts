@@ -24,6 +24,7 @@ import { UpdateArticleDto } from './dto/updateArticle.dto';
 import { ArticlesResponseInterface } from './types/articles.response';
 import type { ArticlesQueryInterface } from './types/articlesQuery.interface';
 import type { ExpressRequestInterface } from '@app/types/expressRequest.interface';
+import { BackendValidationPipe } from '@app/shared/pipes/backendValidation.pipe';
 
 @Controller('articles')
 export class ArticleController {
@@ -48,7 +49,7 @@ export class ArticleController {
 
   @Post()
   @UseGuards(AuthGuard)
-  @UsePipes(new ValidationPipe())
+  @UsePipes(new BackendValidationPipe())
   async createArticle(
     @User() currentUser: UserEntity,
     @Body('article') createArticleDto: CreateArticleDto,
@@ -79,7 +80,7 @@ export class ArticleController {
 
   @Put(':slug')
   @UseGuards(AuthGuard)
-  @UsePipes(new ValidationPipe())
+  @UsePipes(new BackendValidationPipe())
   async updateArticle(
     @Param('slug') slug: string,
     @Body('article') updateArticleDto: UpdateArticleDto,

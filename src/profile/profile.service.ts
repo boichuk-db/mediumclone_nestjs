@@ -1,7 +1,5 @@
 import {
-  BadRequestException,
   Injectable,
-  NotFoundException,
 } from '@nestjs/common';
 import { ProfileResponseInterface } from './types/profileResponse.interface';
 import { ProfileType } from './types/profile.type';
@@ -9,6 +7,7 @@ import { UserEntity } from '@app/user/user.entity';
 import { Repository } from 'typeorm';
 import { InjectRepository } from '@nestjs/typeorm';
 import { FollowEntity } from './follow.entity';
+import { BackendException } from '@app/shared/exceptions/backend.exception';
 
 @Injectable()
 export class ProfileService {
@@ -26,7 +25,7 @@ export class ProfileService {
       where: { username: profileUsername },
     });
     if (!profile) {
-      throw new NotFoundException('Profile not found');
+      throw BackendException.notFound('Profile not found');
     }
     if (!currentUserId) {
       return {
@@ -54,10 +53,10 @@ export class ProfileService {
       where: { username: profileUsername },
     });
     if (!profile) {
-      throw new NotFoundException('Profile not found');
+      throw BackendException.notFound('Profile not found');
     }
     if (currentUserId === profile.id) {
-      throw new BadRequestException('You cannot follow yourself');
+      throw BackendException.badRequest('You cannot follow yourself');
     }
 
     const follow = await this.followRepository.findOne({
@@ -86,10 +85,10 @@ export class ProfileService {
       where: { username: profileUsername },
     });
     if (!profile) {
-      throw new NotFoundException('Profile not found');
+      throw BackendException.notFound('Profile not found');
     }
     if (currentUserId === profile.id) {
-      throw new BadRequestException('You cannot unfollow yourself');
+      throw BackendException.badRequest('You cannot unfollow yourself');
     }
     await this.followRepository.delete({
       followerId: currentUserId,

@@ -1,5 +1,5 @@
 import { CreateUserDto } from '@app/user/dto/createUser.dto';
-import { HttpException, HttpStatus, Injectable } from '@nestjs/common';
+import { Injectable } from '@nestjs/common';
 import { UserEntity } from './user.entity';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
@@ -8,6 +8,7 @@ import { UserResponseInterface } from './types/userResponse.interface';
 import { LoginUserDto } from '@app/user/dto/loginUser.dto';
 import { compare, hash } from 'bcrypt';
 import { UpdateUserDto } from '@app/user/dto/updateUser.dto';
+import { BackendException } from '@app/shared/exceptions/backend.exception';
 
 @Injectable()
 export class UserService {
@@ -23,10 +24,7 @@ export class UserService {
       },
     });
     if (userByEmail) {
-      throw new HttpException(
-        'Email is already in use',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      throw BackendException.validation('email', 'is already in use');
     }
     const userByUsername = await this.userRepository.findOne({
       where: {
@@ -34,10 +32,7 @@ export class UserService {
       },
     });
     if (userByUsername) {
-      throw new HttpException(
-        'Username is already in use',
-        HttpStatus.UNPROCESSABLE_ENTITY,
-      );
+      throw BackendException.validation('username', 'is already in use');
     }
     const newUser = new UserEntity();
     Object.assign(newUser, createUserDto);
@@ -50,14 +45,14 @@ export class UserService {
       select: ['id', 'email', 'username', 'bio', 'image', 'password'],
     });
     if (!user) {
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+      throw BackendException.unauthorized('Invalid credentials');
     }
     const isPasswordCorrect = await compare(
       loginUserDto.password,
       user.password,
     );
     if (!isPasswordCorrect) {
-      throw new HttpException('Invalid credentials', HttpStatus.UNAUTHORIZED);
+      throw BackendException.unauthorized('Invalid credentials');
     }
 
     const { password: _password, ...userWithoutPassword } = user;
@@ -67,7 +62,7 @@ export class UserService {
   async findById(id: number): Promise<UserEntity> {
     const user = await this.userRepository.findOne({ where: { id } });
     if (!user) {
-      throw new HttpException('User not found', HttpStatus.NOT_FOUND);
+      throw BackendException.notFound('User not found');
     }
     return user;
   }
@@ -99,10 +94,7 @@ export class UserService {
         where: { email: updateUserDto.email },
       });
       if (userByEmail && userByEmail.id !== currentUserId) {
-        throw new HttpException(
-          'Email is already in use',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
+        throw BackendException.validation('email', 'is already in use');
       }
     }
     if (updateUserDto.username) {
@@ -110,10 +102,7 @@ export class UserService {
         where: { username: updateUserDto.username },
       });
       if (userByUsername && userByUsername.id !== currentUserId) {
-        throw new HttpException(
-          'Username is already in use',
-          HttpStatus.UNPROCESSABLE_ENTITY,
-        );
+        throw BackendException.validation('username', 'is already in use');
       }
     }
     Object.assign(user, updateUserDto);
